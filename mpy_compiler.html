@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPY Cross Compiler</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface-hover: #1f242c;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent: #58a6ff;
+            --accent-hover: #79b8ff;
+            --success: #3fb950;
+            --error: #f85149;
+            --warning: #d29922;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        header h1 .icon {
+            color: var(--accent);
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            background: var(--border);
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .status-badge.ready {
+            background: rgba(63, 185, 80, 0.15);
+            color: var(--success);
+        }
+
+        .status-badge.error {
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--error);
+        }
+
+        .status-badge.loading {
+            background: rgba(88, 166, 255, 0.15);
+            color: var(--accent);
+        }
+
+        main {
+            flex: 1;
+            max-width: 960px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .dropzone {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            padding: 3rem 2rem;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--accent);
+            background: rgba(88, 166, 255, 0.05);
+        }
+
+        .dropzone .icon-big {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-muted);
+        }
+
+        .dropzone:hover .icon-big, .dropzone.dragover .icon-big {
+            color: var(--accent);
+        }
+
+        .dropzone p {
+            color: var(--text-muted);
+            font-size: 0.9375rem;
+        }
+
+        .dropzone .hint {
+            font-size: 0.8125rem;
+            margin-top: 0.5rem;
+            opacity: 0.7;
+        }
+
+        .dropzone input[type="file"] {
+            display: none;
+        }
+
+        .settings-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
+        .field label {
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        select, input[type="text"] {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            color: var(--text);
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        select:focus, input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--surface-hover);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: #fff;
+        }
+
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            gap: 1rem;
+        }
+
+        .file-item .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 0;
+        }
+
+        .file-item .file-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-item .file-size {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .file-item .file-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .file-status {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .file-status.pending {
+            color: var(--text-muted);
+            background: rgba(139, 148, 158, 0.1);
+        }
+
+        .file-status.compiling {
+            color: var(--accent);
+            background: rgba(88, 166, 255, 0.1);
+        }
+
+        .file-status.done {
+            color: var(--success);
+            background: rgba(63, 185, 80, 0.1);
+        }
+
+        .file-status.failed {
+            color: var(--error);
+            background: rgba(248, 81, 73, 0.1);
+        }
+
+        .remove-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0.25rem;
+            line-height: 1;
+            border-radius: 4px;
+        }
+
+        .remove-btn:hover {
+            color: var(--error);
+            background: rgba(248, 81, 73, 0.1);
+        }
+
+        .actions-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .actions-bar .left, .actions-bar .right {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.9375rem;
+        }
+
+        .log {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            padding: 0.125rem 0;
+        }
+
+        .log-entry.info {
+            color: var(--text);
+        }
+
+        .log-entry.success {
+            color: var(--success);
+        }
+
+        .log-entry.error {
+            color: var(--error);
+        }
+
+        .log-entry.warn {
+            color: var(--warning);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 0.875rem;
+            height: 0.875rem;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: currentColor;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #484f58;
+        }
+
+        .folder-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 0.375rem;
+        }
+        .folder-item input[type="checkbox"] {
+            width: 1rem;
+            height: 1rem;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+        .folder-item label {
+            flex: 1;
+            font-size: 0.875rem;
+            cursor: pointer;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .folder-group {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        summary.folder-group-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--surface);
+            cursor: pointer;
+            user-select: none;
+            min-height: 2.25rem;
+            list-style: none;
+        }
+        summary.folder-group-header:hover {
+            background: var(--surface-hover);
+        }
+        summary.folder-group-header::-webkit-details-marker {
+            display: none;
+        }
+        summary.folder-group-header .arrow {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+            width: 1.5rem;
+            height: 1.5rem;
+            text-align: center;
+            line-height: 1.5rem;
+            flex-shrink: 0;
+        }
+        details:not([open]) > summary .arrow {
+            transform: rotate(-90deg);
+        }
+        .folder-group-header .folder-name {
+            flex: 1;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+        }
+        .folder-group-header input[type="checkbox"] {
+            width: 1rem;
+            height: 1rem;
+            accent-color: var(--accent);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .folder-group-header .count {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .folder-group-files {
+            padding: 0.25rem 0.5rem 0.5rem 2.25rem;
+            background: var(--bg);
+        }
+        .folder-group-files.hidden {
+            display: none;
+        }
+        .folder-file-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.5rem;
+            border-radius: 4px;
+            min-height: 1.75rem;
+        }
+        .folder-file-row:hover {
+            background: var(--surface-hover);
+        }
+        .folder-file-row input[type="checkbox"] {
+            width: 1rem;
+            height: 1rem;
+            accent-color: var(--accent);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .folder-file-row .file-name {
+            flex: 1;
+            font-size: 0.8125rem;
+            color: var(--text);
+            cursor: pointer;
+        }
+        .folder-file-row .folder-item-status {
+            font-size: 0.75rem;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+        .folder-item-status.pending { color: var(--text-muted); }
+        .folder-item-status.done { color: var(--success); }
+        .folder-item-status.failed { color: var(--error); }
+        .folder-item-status.compiling { color: var(--accent); }
+
+        footer {
+            text-align: center;
+            padding: 1rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+        }
+
+        .download-all {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .setup-banner {
+            background: rgba(248, 81, 73, 0.08);
+            border-bottom: 1px solid var(--error);
+            padding: 1.5rem 2rem;
+        }
+
+        .setup-banner .setup-content {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        .setup-banner strong {
+            color: var(--error);
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .setup-banner p {
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .setup-banner ol {
+            margin-left: 1.25rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+
+        .setup-banner code {
+            background: var(--bg);
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            font-size: 0.8125rem;
+            color: var(--text);
+        }
+
+        .setup-banner a {
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>
+            <span class="icon">&#9889;</span>
+            MPY Cross Compiler
+        </h1>
+        <span id="compilerStatus" class="status-badge loading">Connecting...</span>
+    </header>
+
+    <!-- Backend connection banner -->
+    <div id="setupCard" class="setup-banner hidden">
+        <div class="setup-content">
+            <strong>Backend not running</strong>
+            <p>This HTML file needs the Python backend to compile files using your installed <code>mpy_cross</code>.</p>
+            <ol>
+                <li>Double-click <code>Start_MPY_Compiler.bat</code> in this folder.</li>
+                <li>Or run: <code>python mpy_compiler_backend.py</code></li>
+                <li>The backend will start on <code>http://localhost:8765</code> and open your browser.</li>
+            </ol>
+            <button id="retryBtn" class="btn btn-primary">Check Again</button>
+        </div>
+    </div>
+
+    <main>
+        <!-- Drop Zone -->
+        <div class="card">
+            <div class="card-title">Upload Files</div>
+            <div class="dropzone" id="dropzone">
+                <div class="icon-big">&#128194;</div>
+                <p>Drag &amp; drop <strong>.py</strong> files here, or click to browse</p>
+                <p class="hint">Select one or more Python files to compile to MicroPython bytecode (.mpy)</p>
+                <input type="file" id="fileInput" accept=".py" multiple>
+            </div>
+        </div>
+
+        <!-- Project Folder -->
+        <div class="card">
+            <div class="card-title">Project Folder</div>
+            <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1rem;">
+                Select your project folder to compile .py files in-place. Compiled .mpy files are saved next to their source files.
+            </p>
+            <div class="actions-bar" style="margin-bottom: 1rem;">
+                <button id="pickFolderBtn" class="btn btn-primary">Select Folder</button>
+                <button id="compileFolderBtn" class="btn btn-success" disabled>Compile Selected</button>
+                <button id="clearFolderBtn" class="btn btn-secondary" disabled>Clear</button>
+            </div>
+            <div class="actions-bar" style="margin-bottom: 0.75rem;">
+                <button id="selectAllBtn" class="btn btn-secondary" disabled>Select All</button>
+                <button id="deselectAllBtn" class="btn btn-secondary" disabled>Deselect All</button>
+            </div>
+            <div id="folderFileList" class="file-list">
+                <div class="empty-state">No folder selected. Click "Select Folder" to choose your project directory.</div>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="card">
+            <div class="card-title">Compiler Settings</div>
+            <div class="settings-row">
+                <div class="field">
+                    <label for="targetArch">Target Architecture</label>
+                    <select id="targetArch">
+                        <option value="">auto (default)</option>
+                        <option value="x86">x86</option>
+                        <option value="x64">x64</option>
+                        <option value="armv6m">armv6m</option>
+                        <option value="armv7m">armv7m</option>
+                        <option value="armv7emsp">armv7emsp</option>
+                        <option value="armv7emdp">armv7emdp</option>
+                        <option value="xtensa">xtensa (ESP8266)</option>
+                        <option value="xtensawin" selected>xtensawin (ESP32 / ESP32-S3)</option>
+                        <option value="rv32imc">rv32imc</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="mpyVersion">MPY Version</label>
+                    <select id="mpyVersion">
+                        <option value="6" selected>v6 (MicroPython 1.20+)</option>
+                        <option value="5">v5 (MicroPython 1.17+)</option>
+                        <option value="4">v4 (MicroPython 1.12+)</option>
+                        <option value="3">v3 (MicroPython 1.11+)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="optLevel">Optimization Level</label>
+                    <select id="optLevel">
+                        <option value="0">0 - None</option>
+                        <option value="1">1 - Basic</option>
+                        <option value="2">2 - Assertions removed</option>
+                        <option value="3" selected>3 - Debug info removed</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- File List -->
+        <div class="card" id="filesCard">
+            <div class="card-title">Files to Compile</div>
+            <div id="fileList" class="file-list">
+                <div class="empty-state">No files selected. Drop .py files above to get started.</div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions-bar">
+            <div class="left">
+                <button id="compileBtn" class="btn btn-primary" disabled>
+                    <span id="compileSpinner" class="spinner hidden"></span>
+                    <span id="compileLabel">Compile All</span>
+                </button>
+                <button id="clearBtn" class="btn btn-secondary" disabled>Clear All</button>
+            </div>
+        </div>
+
+        <!-- Log -->
+        <div class="card" id="logCard">
+            <div class="card-title">Output Log</div>
+            <div id="log" class="log"></div>
+        </div>
+    </main>
+
+    <footer>
+        Browser UI for local mpy_cross compiler. Run <code>Start_MPY_Compiler.bat</code> to start the backend.
+    </footer>
+
+    <script>
+        // =====================================================================
+        // State
+        // =====================================================================
+        const files = new Map();
+        let backendReady = false;
+        let isCompiling = false;
+        const BACKEND_URL = 'http://localhost:8765';
+
+        // =====================================================================
+        // DOM refs
+        // =====================================================================
+        const $ = id => document.getElementById(id);
+        const dropzone = $('dropzone');
+        const fileInput = $('fileInput');
+        const fileList = $('fileList');
+        const compileBtn = $('compileBtn');
+        const clearBtn = $('clearBtn');
+        const compileSpinner = $('compileSpinner');
+        const compileLabel = $('compileLabel');
+        const compilerStatus = $('compilerStatus');
+        const logEl = $('log');
+        const targetArch = $('targetArch');
+        const optLevel = $('optLevel');
+        const setupCard = $('setupCard');
+        const retryBtn = $('retryBtn');
+        const pickFolderBtn = $('pickFolderBtn');
+        const compileFolderBtn = $('compileFolderBtn');
+        const clearFolderBtn = $('clearFolderBtn');
+        const folderFileList = $('folderFileList');
+        const selectAllBtn = $('selectAllBtn');
+        const deselectAllBtn = $('deselectAllBtn');
+
+        // =====================================================================
+        // Folder mode state
+        // =====================================================================
+        let folderHandle = null;
+        let folderFiles = []; // { handle, dirHandle, name, relPath, status, checked }
+        let folderExpanded = new Set(); // folder paths that are expanded
+        let lastClickTarget = null;
+        document.addEventListener('click', e => { lastClickTarget = e.target; }, true);
+
+        // =====================================================================
+        // Logging
+        // =====================================================================
+        function log(msg, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            entry.textContent = `[${time}] ${msg}`;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        // =====================================================================
+        // Backend connection check
+        // =====================================================================
+        async function checkBackend() {
+            try {
+                const res = await fetch(BACKEND_URL, { method: 'HEAD', mode: 'no-cors' });
+                backendReady = true;
+                compilerStatus.textContent = 'Backend ready';
+                compilerStatus.className = 'status-badge ready';
+                setupCard.classList.add('hidden');
+                log('Connected to local mpy_cross backend.', 'success');
+            } catch (e) {
+                backendReady = false;
+                compilerStatus.textContent = 'Backend offline';
+                compilerStatus.className = 'status-badge error';
+                setupCard.classList.remove('hidden');
+                log('Backend not running. Run Start_MPY_Compiler.bat or python mpy_compiler_backend.py', 'error');
+            }
+        }
+
+        // =====================================================================
+        // File handling
+        // =====================================================================
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function updateFileList() {
+            if (files.size === 0) {
+                fileList.innerHTML = '<div class="empty-state">No files selected. Drop .py files above to get started.</div>';
+                compileBtn.disabled = true;
+                clearBtn.disabled = true;
+                return;
+            }
+
+            fileList.innerHTML = '';
+            files.forEach((f, id) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `
+                    <div class="file-info">
+                        <span class="file-name">${escapeHtml(f.name)}</span>
+                        <span class="file-size">${formatBytes(f.size)}</span>
+                    </div>
+                    <div class="file-actions">
+                        <span class="file-status ${f.status}">${statusText(f.status)}</span>
+                        <button class="remove-btn" data-id="${id}" title="Remove">&times;</button>
+                    </div>
+                `;
+                if (f.status === 'done' && f.result) {
+                    const actions = item.querySelector('.file-actions');
+                    const saveBtn = document.createElement('button');
+                    saveBtn.className = 'btn btn-success';
+                    saveBtn.textContent = 'Save As...';
+                    saveBtn.addEventListener('click', async () => {
+                        try {
+                            const suggestedName = f.name.replace(/\.py$/i, '.mpy');
+                            const handle = await window.showSaveFilePicker({
+                                suggestedName,
+                                types: [{ description: 'MicroPython compiled file', accept: { 'application/octet-stream': ['.mpy'] } }]
+                            });
+                            const writable = await handle.createWritable();
+                            await writable.write(f.result);
+                            await writable.close();
+                            log(`Saved: ${suggestedName}`);
+                        } catch (err) {
+                            if (err.name !== 'AbortError') {
+                                log(`Save failed: ${err.message}`, 'error');
+                            }
+                        }
+                    });
+                    actions.insertBefore(saveBtn, actions.querySelector('.remove-btn'));
+                }
+                fileList.appendChild(item);
+            });
+
+            fileList.querySelectorAll('.remove-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    files.delete(btn.dataset.id);
+                    updateFileList();
+                });
+            });
+
+            compileBtn.disabled = !backendReady || isCompiling;
+            clearBtn.disabled = isCompiling;
+        }
+
+        function statusText(status) {
+            switch (status) {
+                case 'pending': return 'Pending';
+                case 'compiling': return 'Compiling...';
+                case 'done': return 'Done';
+                case 'failed': return 'Failed';
+                default: return status;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function addFiles(fileListObj) {
+            for (const file of fileListObj) {
+                if (!file.name.endsWith('.py')) {
+                    log(`Skipping non-Python file: ${file.name}`, 'warn');
+                    continue;
+                }
+                const id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+                files.set(id, {
+                    file,
+                    name: file.name,
+                    size: file.size,
+                    status: 'pending',
+                    result: null,
+                    error: null,
+                });
+                log(`Added: ${file.name} (${formatBytes(file.size)})`);
+            }
+            updateFileList();
+        }
+
+        // =====================================================================
+        // Folder picker
+        // =====================================================================
+        async function pickFolder() {
+            if (!window.showDirectoryPicker) {
+                log('Folder picker not supported in this browser. Use Chrome or Edge.', 'error');
+                return;
+            }
+            try {
+                folderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                folderFiles = [];
+                folderExpanded = new Set();
+                await scanFolder(folderHandle, '');
+                folderFiles.sort((a, b) => a.relPath.localeCompare(b.relPath));
+                // Expand all folders by default
+                const tree = buildTree(folderFiles);
+                tree.children.forEach(collectFolderPaths);
+                renderFolderList();
+                compileFolderBtn.disabled = folderFiles.length === 0 || !backendReady;
+                clearFolderBtn.disabled = false;
+                log(`Selected folder: ${folderFiles.length} .py file(s) found`);
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    log(`Folder selection failed: ${e.message}`, 'error');
+                }
+            }
+        }
+
+        async function scanFolder(dirHandle, relPath) {
+            for await (const entry of dirHandle.values()) {
+                const entryRel = relPath ? `${relPath}/${entry.name}` : entry.name;
+                if (entry.kind === 'directory') {
+                    await scanFolder(entry, entryRel);
+                } else if (entry.kind === 'file' && entry.name.endsWith('.py')) {
+                    folderFiles.push({
+                        handle: entry,
+                        dirHandle: dirHandle,
+                        name: entry.name,
+                        relPath: entryRel,
+                        status: 'pending',
+                        checked: true
+                    });
+                }
+            }
+        }
+
+        function buildTree(files) {
+            const root = { type: 'root', children: [] };
+            for (const f of files) {
+                const parts = f.relPath.split('/');
+                let current = root;
+                let currentPath = '';
+                for (let i = 0; i < parts.length; i++) {
+                    const isFile = i === parts.length - 1;
+                    const part = parts[i];
+                    currentPath = currentPath ? `${currentPath}/${part}` : part;
+                    if (isFile) {
+                        current.children.push({ type: 'file', name: part, path: f.relPath, fileRef: f });
+                    } else {
+                        let folder = current.children.find(c => c.type === 'folder' && c.name === part);
+                        if (!folder) {
+                            folder = { type: 'folder', name: part, path: currentPath, children: [] };
+                            current.children.push(folder);
+                        }
+                        current = folder;
+                    }
+                }
+            }
+            function sortChildren(node) {
+                node.children.sort((a, b) => {
+                    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+                    return a.name.localeCompare(b.name);
+                });
+                for (const child of node.children) {
+                    if (child.type === 'folder') sortChildren(child);
+                }
+            }
+            sortChildren(root);
+            return root;
+        }
+
+        function collectFolderPaths(node) {
+            if (node.type === 'folder') {
+                folderExpanded.add(node.path);
+                node.children.forEach(collectFolderPaths);
+            }
+        }
+
+        function computeTreeState(node) {
+            if (node.type === 'file') {
+                return { total: 1, checked: node.fileRef.checked ? 1 : 0 };
+            }
+            let total = 0, checked = 0;
+            for (const child of node.children) {
+                const s = computeTreeState(child);
+                total += s.total;
+                checked += s.checked;
+            }
+            node.totalFiles = total;
+            node.checkedFiles = checked;
+            node.allChecked = checked === total && total > 0;
+            node.someChecked = checked > 0 && checked < total;
+            return { total, checked };
+        }
+
+        function setFolderChecked(node, checked) {
+            if (node.type === 'file') {
+                node.fileRef.checked = checked;
+                return;
+            }
+            for (const child of node.children) {
+                setFolderChecked(child, checked);
+            }
+        }
+
+        function renderTreeNode(node, container) {
+            if (node.type === 'root') {
+                for (const child of node.children) {
+                    renderTreeNode(child, container);
+                }
+                return;
+            }
+            if (node.type === 'folder') {
+                const details = document.createElement('details');
+                details.className = 'folder-group';
+                details.open = node.expanded;
+                details.dataset.path = node.path;
+
+                const summary = document.createElement('summary');
+                summary.className = 'folder-group-header';
+
+                const arrow = document.createElement('span');
+                arrow.className = 'arrow';
+                arrow.textContent = '\u25BE';
+                summary.appendChild(arrow);
+
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = node.allChecked;
+                cb.indeterminate = node.someChecked;
+                summary.appendChild(cb);
+
+                // Revert <details> toggle if it was triggered by a checkbox click
+                details.addEventListener('toggle', e => {
+                    const clickedInput = lastClickTarget && lastClickTarget.tagName === 'INPUT';
+                    if (clickedInput) {
+                        e.target.open = !e.target.open; // revert
+                    } else {
+                        if (e.target.open) folderExpanded.add(e.target.dataset.path);
+                        else folderExpanded.delete(e.target.dataset.path);
+                    }
+                });
+
+                const label = document.createElement('span');
+                label.className = 'folder-name';
+                label.textContent = node.name + '/';
+                summary.appendChild(label);
+
+                const count = document.createElement('span');
+                count.className = 'count';
+                count.textContent = `${node.checkedFiles}/${node.totalFiles}`;
+                summary.appendChild(count);
+
+                const filesContainer = document.createElement('div');
+                filesContainer.className = 'folder-group-files';
+
+                for (const child of node.children) {
+                    renderTreeNode(child, filesContainer);
+                }
+
+                details.appendChild(summary);
+                details.appendChild(filesContainer);
+                container.appendChild(details);
+
+                cb.addEventListener('change', e => {
+                    setFolderChecked(node, e.target.checked);
+                    updateTreeUI();
+                });
+            } else {
+                const row = document.createElement('div');
+                row.className = 'folder-file-row';
+                row.dataset.path = node.path;
+
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = node.fileRef.checked;
+                row.appendChild(cb);
+
+                const label = document.createElement('span');
+                label.className = 'file-name';
+                label.textContent = node.name || '(unnamed)';
+                row.appendChild(label);
+
+                const status = document.createElement('span');
+                status.className = 'folder-item-status ' + node.fileRef.status;
+                status.textContent = statusText(node.fileRef.status);
+                row.appendChild(status);
+
+                container.appendChild(row);
+
+                cb.addEventListener('change', e => {
+                    node.fileRef.checked = e.target.checked;
+                    updateTreeUI();
+                });
+            }
+        }
+
+        function renderFolderList() {
+            if (folderFiles.length === 0) {
+                folderFileList.innerHTML = '<div class="empty-state">No folder selected. Click "Select Folder" to choose your project directory.</div>';
+                compileFolderBtn.disabled = true;
+                clearFolderBtn.disabled = true;
+                selectAllBtn.disabled = true;
+                deselectAllBtn.disabled = true;
+                return;
+            }
+            const tree = buildTree(folderFiles);
+            computeTreeState(tree);
+            folderFileList.innerHTML = '';
+            renderTreeNode(tree, folderFileList);
+
+            compileFolderBtn.disabled = !backendReady || isCompiling || folderFiles.every(f => !f.checked);
+            clearFolderBtn.disabled = isCompiling;
+            selectAllBtn.disabled = isCompiling || folderFiles.length === 0;
+            deselectAllBtn.disabled = isCompiling || folderFiles.length === 0;
+        }
+
+        function updateTreeUI() {
+            const tree = buildTree(folderFiles);
+            computeTreeState(tree);
+            const nodeMap = {};
+            function walk(node) {
+                if (node.type === 'file') {
+                    nodeMap[node.path] = node;
+                } else {
+                    nodeMap[node.path] = node;
+                    node.children.forEach(walk);
+                }
+            }
+            tree.children.forEach(walk);
+
+            folderFileList.querySelectorAll('details.folder-group').forEach(el => {
+                const node = nodeMap[el.dataset.path];
+                if (node && node.type === 'folder') {
+                    const cb = el.querySelector('summary input[type="checkbox"]');
+                    if (cb) {
+                        cb.checked = node.allChecked;
+                        cb.indeterminate = node.someChecked;
+                    }
+                    const count = el.querySelector('summary .count');
+                    if (count) {
+                        count.textContent = `${node.checkedFiles}/${node.totalFiles}`;
+                    }
+                }
+            });
+
+            folderFileList.querySelectorAll('.folder-file-row').forEach(el => {
+                const node = nodeMap[el.dataset.path];
+                if (node && node.type === 'file') {
+                    const cb = el.querySelector('input[type="checkbox"]');
+                    if (cb) cb.checked = node.fileRef.checked;
+                }
+            });
+
+            compileFolderBtn.disabled = !backendReady || isCompiling || folderFiles.every(f => !f.checked);
+        }
+
+        function updateStatusUI() {
+            folderFileList.querySelectorAll('.folder-file-row').forEach(el => {
+                const path = el.dataset.path;
+                if (!path) return;
+                const file = folderFiles.find(f => f.relPath === path);
+                if (file) {
+                    const status = el.querySelector('.folder-item-status');
+                    if (status) {
+                        status.className = 'folder-item-status ' + file.status;
+                        status.textContent = statusText(file.status);
+                    }
+                }
+            });
+        }
+
+        async function compileFolder() {
+            if (!backendReady || isCompiling) return;
+            const selected = folderFiles.filter(f => f.checked);
+            if (selected.length === 0) return;
+
+            isCompiling = true;
+            compileFolderBtn.disabled = true;
+            clearFolderBtn.disabled = true;
+            compileBtn.disabled = true;
+            clearBtn.disabled = true;
+
+            const arch = targetArch.value || '';
+            const opt = optLevel.value || '3';
+            log(`Starting folder compilation: ${selected.length} file(s), arch=${arch || 'default'}, opt=${opt}`);
+
+            // Reset status
+            selected.forEach(f => { f.status = 'pending'; });
+            updateStatusUI();
+
+            // Compile concurrently
+            await Promise.all(selected.map(f => compileFolderFile(f, arch, opt)));
+
+            isCompiling = false;
+            compileFolderBtn.disabled = !backendReady;
+            clearFolderBtn.disabled = false;
+            compileBtn.disabled = !backendReady;
+            clearBtn.disabled = false;
+
+            const failed = selected.filter(f => f.status === 'failed').length;
+            const done = selected.filter(f => f.status === 'done').length;
+            if (failed === 0) {
+                log(`All ${done} file(s) compiled and saved in-place.`, 'success');
+            } else {
+                log(`Done: ${done} succeeded, ${failed} failed.`, 'warn');
+            }
+        }
+
+        async function compileFolderFile(f, arch, opt) {
+            f.status = 'compiling';
+            updateStatusUI();
+            try {
+                const file = await f.handle.getFile();
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('arch', arch);
+                formData.append('opt', opt);
+
+                const response = await fetch(`${BACKEND_URL}/compile`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const bytes = Uint8Array.from(atob(data.data), c => c.charCodeAt(0));
+                    const mpyName = f.name.replace(/\.py$/i, '.mpy');
+                    const mpyHandle = await f.dirHandle.getFileHandle(mpyName, { create: true });
+                    const writable = await mpyHandle.createWritable();
+                    await writable.write(bytes);
+                    await writable.close();
+                    f.status = 'done';
+                    log(`Compiled: ${f.relPath} -> ${formatBytes(data.size)}`);
+                } else {
+                    throw new Error(data.error || 'Compilation failed');
+                }
+            } catch (err) {
+                f.status = 'failed';
+                log(`Failed: ${f.relPath} - ${err.message}`, 'error');
+            }
+            updateStatusUI();
+        }
+
+        // =====================================================================
+        // Compilation via backend (drag & drop mode — concurrent)
+        // =====================================================================
+        async function compileAll() {
+            if (!backendReady || isCompiling) return;
+            isCompiling = true;
+            compileBtn.disabled = true;
+            compileSpinner.classList.remove('hidden');
+            compileLabel.textContent = 'Compiling...';
+            clearBtn.disabled = true;
+            compileFolderBtn.disabled = true;
+            clearFolderBtn.disabled = true;
+
+            const arch = targetArch.value || '';
+            const opt = optLevel.value || '3';
+            log(`Starting compilation: arch=${arch || 'default'}, opt=${opt}`);
+
+            const toCompile = [];
+            for (const [id, f] of files) {
+                if (f.status === 'done') {
+                    f.status = 'pending';
+                    f.result = null;
+                    f.error = null;
+                }
+                if (f.status === 'pending' || f.status === 'failed') {
+                    toCompile.push(f);
+                }
+            }
+            updateFileList();
+
+            // Compile concurrently
+            await Promise.all(toCompile.map(f => compileSingleFile(f, arch, opt)));
+
+            isCompiling = false;
+            compileSpinner.classList.add('hidden');
+            compileLabel.textContent = 'Compile All';
+            compileBtn.disabled = !backendReady;
+            clearBtn.disabled = false;
+            compileFolderBtn.disabled = !backendReady;
+            clearFolderBtn.disabled = false;
+
+            const failed = Array.from(files.values()).filter(f => f.status === 'failed').length;
+            const done = Array.from(files.values()).filter(f => f.status === 'done').length;
+            if (failed === 0) {
+                log(`All ${done} file(s) compiled successfully.`, 'success');
+            } else {
+                log(`Done: ${done} succeeded, ${failed} failed.`, 'warn');
+            }
+        }
+
+        async function compileSingleFile(f, arch, opt) {
+            f.status = 'compiling';
+            updateFileList();
+            try {
+                const formData = new FormData();
+                formData.append('file', f.file);
+                formData.append('arch', arch);
+                formData.append('opt', opt);
+
+                const response = await fetch(`${BACKEND_URL}/compile`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const bytes = Uint8Array.from(atob(data.data), c => c.charCodeAt(0));
+                    f.result = bytes;
+                    f.status = 'done';
+                    log(`Compiled: ${f.name} -> ${formatBytes(data.size)}`, 'success');
+                } else {
+                    throw new Error(data.error || 'Compilation failed');
+                }
+            } catch (err) {
+                f.status = 'failed';
+                f.error = err.message || String(err);
+                log(`Failed: ${f.name} - ${f.error}`, 'error');
+            }
+            updateFileList();
+        }
+
+        // =====================================================================
+        // Event listeners
+        // =====================================================================
+        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('dragover'); addFiles(e.dataTransfer.files); });
+        fileInput.addEventListener('change', e => { addFiles(e.target.files); fileInput.value = ''; });
+
+        compileBtn.addEventListener('click', compileAll);
+
+        clearBtn.addEventListener('click', () => {
+            files.clear();
+            updateFileList();
+            log('Cleared all files.');
+        });
+
+        pickFolderBtn.addEventListener('click', pickFolder);
+        compileFolderBtn.addEventListener('click', compileFolder);
+        clearFolderBtn.addEventListener('click', () => {
+            folderHandle = null;
+            folderFiles = [];
+            folderExpanded = new Set();
+            renderFolderList();
+            log('Cleared folder selection.');
+        });
+        selectAllBtn.addEventListener('click', () => {
+            folderFiles.forEach(f => f.checked = true);
+            updateTreeUI();
+        });
+        deselectAllBtn.addEventListener('click', () => {
+            folderFiles.forEach(f => f.checked = false);
+            updateTreeUI();
+        });
+
+        retryBtn.addEventListener('click', () => {
+            setupCard.classList.add('hidden');
+            compilerStatus.textContent = 'Connecting...';
+            compilerStatus.className = 'status-badge loading';
+            checkBackend();
+        });
+
+        // =====================================================================
+        // Init
+        // =====================================================================
+        log('Initializing MPY Cross Compiler...');
+        checkBackend();
+    </script>
+</body>
+</html>
